@@ -793,13 +793,15 @@ bool GfxRenderer::resolveTextFallback(const int fontId, const EpdFontFamily& fon
   const int targetAscender = targetData ? targetData->ascender : 0;
   const int targetLineHeight = targetData ? targetData->advanceY : 0;
 
-  const auto applyScale = [&](const int sourceScaleHeight, const int sourceAscender, const int sourceLineHeight) {
+  const auto applyScale = [&](const int sourceScaleHeight, const int sourceAscender, const int sourceLineHeight,
+                              const bool sourceOwnsLineBox = false) {
     out->sourceMetrics = out->metrics;
     out->sourceAdvance = out->advance;
     out->sourceAscender = sourceAscender;
     out->sourceBaselineOffset = out->baselineOffset;
     out->sourceCellClipWidth = out->cellClipWidth;
-    out->scale = makeTextFallbackScale(targetAscender, targetLineHeight, sourceScaleHeight, sourceLineHeight);
+    out->scale = resolveTextFallbackScale(sourceOwnsLineBox, targetAscender, targetLineHeight, sourceScaleHeight,
+                                          sourceLineHeight);
     out->metrics.width = scaleTextFallbackExtent(out->sourceMetrics.width, out->scale);
     out->metrics.height = scaleTextFallbackExtent(out->sourceMetrics.height, out->scale);
     out->metrics.advanceX = scaleTextFallbackExtent(out->sourceMetrics.advanceX, out->scale);
@@ -857,7 +859,7 @@ bool GfxRenderer::resolveTextFallback(const int fontId, const EpdFontFamily& fon
     out->baselineOffset = baselineOffset;
     out->cellClipWidth = cellClipWidth;
     applyScale(extFont->getCharHeight(), getExternalFontAscenderForRendering(*extFont),
-               getExternalFontLineHeightForRendering(*extFont));
+               getExternalFontLineHeightForRendering(*extFont), mode == MetricsMode::Reader);
     return true;
   };
 

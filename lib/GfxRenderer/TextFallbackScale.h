@@ -23,6 +23,16 @@ inline TextFallbackScale makeTextFallbackScale(const int targetAscender, const i
   return scale;
 }
 
+// The active external reader font owns the reader line box (layout uses its
+// line height and ascender), so it renders at native size. Other fallback
+// sources are fitted to the target family's metrics.
+inline TextFallbackScale resolveTextFallbackScale(const bool sourceOwnsLineBox, const int targetAscender,
+                                                  const int targetLineHeight, const int sourceAscender,
+                                                  const int sourceLineHeight) {
+  if (sourceOwnsLineBox) return {};
+  return makeTextFallbackScale(targetAscender, targetLineHeight, sourceAscender, sourceLineHeight);
+}
+
 inline TextFallbackScale composeHalfScale(TextFallbackScale scale, const bool halfScale) {
   if (halfScale) scale.denominator *= 2;
   return scale;

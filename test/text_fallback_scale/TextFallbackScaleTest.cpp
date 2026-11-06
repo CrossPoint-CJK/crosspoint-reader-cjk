@@ -20,6 +20,17 @@ int main() {
   assert(scaleTextFallbackExtent(12, smallerLineBox) == 10);
   assert(scaleTextFallbackExtent(24, composeHalfScale(smallerLineBox, true)) == 10);
 
+  // A 33x39 external reader font over built-in Noto Sans 14 (ascender 32, line height 40):
+  // fitting would shrink it to 32/39, but the reader font owns the line box and stays 1:1.
+  const TextFallbackScale fitted = resolveTextFallbackScale(false, 32, 40, 39, 39);
+  assert(fitted.numerator == 32);
+  assert(fitted.denominator == 39);
+  const TextFallbackScale readerExternal = resolveTextFallbackScale(true, 32, 40, 39, 39);
+  assert(readerExternal.numerator == 1);
+  assert(readerExternal.denominator == 1);
+  assert(scaleTextFallbackExtent(39, readerExternal) == 39);
+  assert(scaleTextFallbackExtent(33, composeHalfScale(readerExternal, true)) == 17);
+
   const TextFallbackScale sampled{3, 5};
   assert(textFallbackSourceStart(0, sampled) == 0);
   assert(textFallbackSourceEnd(0, 10, sampled) == 2);
