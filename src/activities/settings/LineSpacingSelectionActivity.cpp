@@ -18,6 +18,8 @@ const char* lineSpacingLabel(int value) {
       return tr(STR_TIGHT);
     case CrossPointSettings::WIDE:
       return tr(STR_WIDE);
+    case CrossPointSettings::EXTRA_WIDE:
+      return tr(STR_EXTRA_WIDE);
     case CrossPointSettings::NORMAL:
     default:
       return tr(STR_NORMAL);

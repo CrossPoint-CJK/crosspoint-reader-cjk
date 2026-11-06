@@ -27,7 +27,7 @@ int findCurrentFontSizeIndex(uint8_t fontSize, size_t listSize) {
   return fontSize < listSize ? fontSize : 1;  // default MEDIUM
 }
 
-constexpr StrId LINE_SPACING_IDS[] = {StrId::STR_TIGHT, StrId::STR_NORMAL, StrId::STR_WIDE};
+constexpr StrId LINE_SPACING_IDS[] = {StrId::STR_TIGHT, StrId::STR_NORMAL, StrId::STR_WIDE, StrId::STR_EXTRA_WIDE};
 constexpr StrId ALIGNMENT_IDS[] = {StrId::STR_JUSTIFY, StrId::STR_ALIGN_LEFT, StrId::STR_CENTER, StrId::STR_ALIGN_RIGHT,
                                    StrId::STR_BOOK_S_STYLE};
 constexpr int MARGIN_MIN = CrossPointSettings::SCREEN_MARGIN_MIN;

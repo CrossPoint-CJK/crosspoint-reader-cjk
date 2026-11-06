@@ -10,6 +10,7 @@
 #include <string>
 
 #include "I18nKeys.h"
+#include "ReaderLineSpacing.h"
 #include "SettingsList.h"
 #include "fontIds.h"
 
@@ -291,42 +292,14 @@ ReaderRenderSpec CrossPointSettings::readerRenderSpec(const uint16_t viewportWid
 }
 
 float CrossPointSettings::getReaderLineCompression() const {
-  // SD card fonts use same compression as Bookerly (the most neutral values)
-  if (sdFontFamilyName[0] != '\0') {
-    switch (lineSpacing) {
-      case TIGHT:
-        return 0.95f;
-      case NORMAL:
-      default:
-        return 1.0f;
-      case WIDE:
-        return 1.1f;
-    }
+  static_assert(LINE_COMPRESSION_COUNT == ReaderLineSpacing::LEVEL_COUNT && NORMAL == ReaderLineSpacing::NORMAL_LEVEL,
+                "ReaderLineSpacing tables must follow LINE_COMPRESSION");
+  using ReaderLineSpacing::Source;
+  if (FontManager::getInstance().isExternalFontEnabled() || sdFontFamilyName[0] != '\0') {
+    return ReaderLineSpacing::compression(Source::FontOwned, lineSpacing);
   }
-
-  switch (fontFamily) {
-    case NOTOSERIF:
-    default:
-      switch (lineSpacing) {
-        case TIGHT:
-          return 0.95f;
-        case NORMAL:
-        default:
-          return 1.0f;
-        case WIDE:
-          return 1.1f;
-      }
-    case NOTOSANS:
-      switch (lineSpacing) {
-        case TIGHT:
-          return 0.90f;
-        case NORMAL:
-        default:
-          return 0.95f;
-        case WIDE:
-          return 1.0f;
-      }
-  }
+  return ReaderLineSpacing::compression(fontFamily == NOTOSANS ? Source::BuiltInSans : Source::BuiltInSerif,
+                                        lineSpacing);
 }
 
 unsigned long CrossPointSettings::getSleepTimeoutMs() const {
