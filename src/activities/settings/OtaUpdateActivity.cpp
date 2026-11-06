@@ -41,7 +41,7 @@ void wifiModeWorker(void* ctx) {
 }
 
 bool wifiModeWithTimeout() {
-  auto* request = new (std::nothrow) WifiModeRequest{};
+  auto* request = new (std::nothrow) WifiModeRequest();
   if (request == nullptr) {
     // No heap for the fallback path: call inline like the old code.
     return WiFi.mode(WIFI_STA);
