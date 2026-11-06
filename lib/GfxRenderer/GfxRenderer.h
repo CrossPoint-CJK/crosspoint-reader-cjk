@@ -24,6 +24,7 @@ class HalFile;
 #include "Bitmap.h"
 #include "ExternalFontHelpers.h"
 #include "TextFallbackScale.h"
+#include "TextSpacing.h"
 
 // Forward declaration for external font support
 class ExternalFont;
@@ -152,7 +153,7 @@ class GfxRenderer {
   void renderTextFallbackRotated90CW(const TextFallbackGlyph& fallback, uint32_t cp, int cursorX, int cursorY,
                                      bool pixelState, bool halfScale) const;
   int measureTextAdvance(int resolvedFontId, const EpdFontFamily& fontFamily, const char* text,
-                         EpdFontFamily::Style style) const;
+                         EpdFontFamily::Style style, int8_t tracking = 0) const;
   bool measureSdTextPrefix(int resolvedFontId, const EpdFontFamily& fontFamily, const char* text,
                            EpdFontFamily::Style style, HalFile& metricsFile, std::vector<size_t>& byteOffsets,
                            std::vector<int>& prefixWidths, int& textWidth) const;
@@ -371,19 +372,21 @@ class GfxRenderer {
                         BidiUtils::BidiBaseDir baseDir = BidiUtils::BidiBaseDir::AUTO) const;
   // Returns false when a caller-supplied cancellation callback supersedes a
   // long text draw. The callback is optional so ordinary UI drawing stays on
-  // the existing hot path.
+  // the existing hot path. tracking adds pixels between adjacent glyphs (see TextSpacing).
   bool drawText(int fontId, int x, int y, const char* text, bool black = true,
                 EpdFontFamily::Style style = EpdFontFamily::REGULAR,
                 BidiUtils::BidiBaseDir baseDir = BidiUtils::BidiBaseDir::AUTO,
-                bool (*isCancelled)(const void*) = nullptr, const void* cancellationContext = nullptr) const;
+                bool (*isCancelled)(const void*) = nullptr, const void* cancellationContext = nullptr,
+                int8_t tracking = 0) const;
   int getSpaceWidth(int fontId, EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
   /// Returns the total inter-word advance. Space advance and both flanking kern values are combined before
   /// snapping; SUP/SUB scales that fixed-point total by 50% before the single snap.
   int getSpaceAdvance(int fontId, uint32_t leftCp, uint32_t rightCp, EpdFontFamily::Style style) const;
   /// Returns the rendered cross-token correction for adjacent exact EPD glyphs. The kern is combined with the
   /// left glyph advance before snapping so split continuation tokens match the same text rendered in one call.
-  int getKerning(int fontId, uint32_t leftCp, uint32_t rightCp, EpdFontFamily::Style style) const;
-  int getTextAdvanceX(int fontId, const char* text, EpdFontFamily::Style style,
+  /// tracking is added for any glyph pair, matching drawText().
+  int getKerning(int fontId, uint32_t leftCp, uint32_t rightCp, EpdFontFamily::Style style, int8_t tracking = 0) const;
+  int getTextAdvanceX(int fontId, const char* text, EpdFontFamily::Style style, int8_t tracking = 0,
                       BidiUtils::BidiBaseDir baseDir = BidiUtils::BidiBaseDir::AUTO) const;
   int getFontAscenderSize(int fontId) const;
   int getLineHeight(int fontId) const;

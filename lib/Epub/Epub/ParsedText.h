@@ -29,6 +29,7 @@ class ParsedText {
   bool firstLineIndent;
   bool hyphenationEnabled;
   bool focusReadingEnabled;
+  uint8_t wordSpacingPercent = 100;
   bool isNaturalAlign;
   bool hasRtlWord;
   std::vector<std::string> reorderedWordsScratch;
@@ -82,5 +83,6 @@ class ParsedText {
   bool isEmpty() const { return wordOffsets.empty(); }
   void layoutAndExtractLines(const GfxRenderer& renderer, int fontId, uint16_t viewportWidth,
                              const std::function<void(std::shared_ptr<TextBlock>)>& processLine,
-                             bool includeLastLine = true);
+                             bool includeLastLine = true, int8_t characterSpacing = 0,
+                             uint8_t wordSpacingPercent = 100);
 };

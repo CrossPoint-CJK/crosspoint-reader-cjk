@@ -30,6 +30,12 @@ int findCurrentFontSizeIndex(uint8_t fontSize, size_t listSize) {
 constexpr StrId LINE_SPACING_IDS[] = {StrId::STR_TIGHT, StrId::STR_NORMAL, StrId::STR_WIDE, StrId::STR_EXTRA_WIDE};
 constexpr StrId ALIGNMENT_IDS[] = {StrId::STR_JUSTIFY, StrId::STR_ALIGN_LEFT, StrId::STR_CENTER, StrId::STR_ALIGN_RIGHT,
                                    StrId::STR_BOOK_S_STYLE};
+constexpr StrId CHARACTER_SPACING_IDS[] = {StrId::STR_SPACING_MINUS_2, StrId::STR_SPACING_MINUS_1,
+                                           StrId::STR_SPACING_ZERO, StrId::STR_SPACING_PLUS_1,
+                                           StrId::STR_SPACING_PLUS_2};
+constexpr int WORD_SPACING_MIN = CrossPointSettings::WORD_SPACING_MIN;
+constexpr int WORD_SPACING_MAX = CrossPointSettings::WORD_SPACING_MAX;
+constexpr int WORD_SPACING_STEP = CrossPointSettings::WORD_SPACING_STEP;
 constexpr int MARGIN_MIN = CrossPointSettings::SCREEN_MARGIN_MIN;
 constexpr int MARGIN_MAX = CrossPointSettings::SCREEN_MARGIN_MAX;
 constexpr int MARGIN_STEP = CrossPointSettings::SCREEN_MARGIN_STEP;
@@ -289,9 +295,9 @@ void TextSettingsActivity::render(RenderLock&&) {
 
     case Tab::Layout: {
       constexpr int LAYOUT_ROWS = static_cast<int>(LayoutRow::Count);
-      static constexpr StrId ROW_NAME_IDS[LAYOUT_ROWS] = {StrId::STR_LINE_SPACING, StrId::STR_EXTRA_SPACING,
-                                                          StrId::STR_FIRST_LINE_INDENT, StrId::STR_ALIGNMENT,
-                                                          StrId::STR_SCREEN_MARGIN};
+      static constexpr StrId ROW_NAME_IDS[LAYOUT_ROWS] = {
+          StrId::STR_LINE_SPACING,      StrId::STR_WORD_SPACING, StrId::STR_CHARACTER_SPACING, StrId::STR_EXTRA_SPACING,
+          StrId::STR_FIRST_LINE_INDENT, StrId::STR_ALIGNMENT,    StrId::STR_SCREEN_MARGIN};
       GUI.drawList(
           renderer, listRect, LAYOUT_ROWS, selectedItem,
           [](int index) { return std::string(I18N.get(ROW_NAME_IDS[index])); }, nullptr, nullptr,
@@ -681,6 +687,26 @@ void TextSettingsActivity::confirmLayoutRow(int row) {
                         SETTINGS.lineSpacing, [](int idx) { SETTINGS.lineSpacing = static_cast<uint8_t>(idx); });
       requestUpdate();
       break;
+    case LayoutRow::WordSpacing: {
+      std::vector<std::string> options;
+      options.reserve((WORD_SPACING_MAX - WORD_SPACING_MIN) / WORD_SPACING_STEP + 1);
+      for (int p = WORD_SPACING_MIN; p <= WORD_SPACING_MAX; p += WORD_SPACING_STEP) {
+        options.push_back(std::to_string(p) + "%");
+      }
+      const int cur = (std::clamp<int>(SETTINGS.wordSpacing, WORD_SPACING_MIN, WORD_SPACING_MAX) - WORD_SPACING_MIN) /
+                      WORD_SPACING_STEP;
+      optionPopup_.show(StrId::STR_WORD_SPACING, options, cur, [](int idx) {
+        SETTINGS.wordSpacing = static_cast<uint8_t>(WORD_SPACING_MIN + idx * WORD_SPACING_STEP);
+      });
+      requestUpdate();
+      break;
+    }
+    case LayoutRow::CharacterSpacing:
+      optionPopup_.show(StrId::STR_CHARACTER_SPACING, CHARACTER_SPACING_IDS,
+                        static_cast<int>(std::size(CHARACTER_SPACING_IDS)), SETTINGS.characterSpacing,
+                        [](int idx) { SETTINGS.characterSpacing = static_cast<uint8_t>(idx); });
+      requestUpdate();
+      break;
     case LayoutRow::Alignment:
       optionPopup_.show(StrId::STR_ALIGNMENT, ALIGNMENT_IDS, static_cast<int>(std::size(ALIGNMENT_IDS)),
                         SETTINGS.paragraphAlignment,
@@ -708,6 +734,13 @@ std::string TextSettingsActivity::layoutValueText(int row) const {
     case LayoutRow::LineSpacing: {
       const uint8_t v = SETTINGS.lineSpacing;
       return v < std::size(LINE_SPACING_IDS) ? I18N.get(LINE_SPACING_IDS[v]) : I18N.get(StrId::STR_NORMAL);
+    }
+    case LayoutRow::WordSpacing:
+      return std::to_string(SETTINGS.wordSpacing) + "%";
+    case LayoutRow::CharacterSpacing: {
+      const uint8_t v = SETTINGS.characterSpacing;
+      return v < std::size(CHARACTER_SPACING_IDS) ? I18N.get(CHARACTER_SPACING_IDS[v])
+                                                  : I18N.get(StrId::STR_SPACING_ZERO);
     }
     case LayoutRow::ParaSpacing:
       return SETTINGS.extraParagraphSpacing ? tr(STR_STATE_ON) : tr(STR_STATE_OFF);

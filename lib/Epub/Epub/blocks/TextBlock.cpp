@@ -160,6 +160,7 @@ bool TextBlock::render(const GfxRenderer& renderer, const int fontId, const int 
 
     const char* word = wordText(i);
     const int wordX = xposArr[i] + x;
+    const int8_t tracking = blockStyle.characterSpacing;
     const EpdFontFamily::Style currentStyle = wordStyle(i);
     const auto baseDir =
         static_cast<BidiUtils::BidiBaseDir>(BidiUtils::detectParagraphLevel(word, blockStyle.isRtl ? 1 : 0));
@@ -192,19 +193,19 @@ bool TextBlock::render(const GfxRenderer& renderer, const int fontId, const int 
       boldBuf[boldLen] = '\0';
       if (!renderer.drawText(fontId, wordX, wordY, boldBuf, true, boldStyle, baseDir,
                              cancellation ? cancellation->isCancelled : nullptr,
-                             cancellation ? cancellation->context : nullptr)) {
+                             cancellation ? cancellation->context : nullptr, tracking)) {
         return false;
       }
       const int suffixX = wordX + focusSuffixXArr[i];
       if (!renderer.drawText(fontId, suffixX, wordY, word + boldLen, true, currentStyle, baseDir,
                              cancellation ? cancellation->isCancelled : nullptr,
-                             cancellation ? cancellation->context : nullptr)) {
+                             cancellation ? cancellation->context : nullptr, tracking)) {
         return false;
       }
     } else {
       if (!renderer.drawText(fontId, wordX, wordY, word, true, currentStyle, baseDir,
                              cancellation ? cancellation->isCancelled : nullptr,
-                             cancellation ? cancellation->context : nullptr)) {
+                             cancellation ? cancellation->context : nullptr, tracking)) {
         return false;
       }
     }
@@ -214,22 +215,31 @@ bool TextBlock::render(const GfxRenderer& renderer, const int fontId, const int 
     }
 
     if (EpdFontFamily::hasTextDecoration(currentStyle)) {
+      // Character spacing widens the drawn text by the pixels drawText() inserted between glyphs.
+      const auto trackingWidth = [&](const char* text) {
+        return tracking == 0 ? 0
+                             : renderer.getTextAdvanceX(fontId, text, currentStyle, tracking, baseDir) -
+                                   renderer.getTextAdvanceX(fontId, text, currentStyle, 0, baseDir);
+      };
       int lineStartX = wordX;
       int lineWidth = renderer.getTextWidth(fontId, word, currentStyle, baseDir);
 
       if ((currentStyle & (EpdFontFamily::SUP | EpdFontFamily::SUB)) != 0) {
         lineWidth = (lineWidth + 1) / 2;
       }
+      lineWidth += trackingWidth(word);
 
       // Do not decorate the synthetic em-space used for paragraph indentation.
       if (wordTextLen(i) >= 3 && static_cast<uint8_t>(word[0]) == 0xE2 && static_cast<uint8_t>(word[1]) == 0x80 &&
           static_cast<uint8_t>(word[2]) == 0x83) {
         const char* visibleText = word + 3;
-        lineStartX += renderer.getTextAdvanceX(fontId, "\xe2\x80\x83", currentStyle);
+        lineStartX += renderer.getTextAdvanceX(fontId, "\xe2\x80\x83", currentStyle) +
+                      (trackingWidth(word) - trackingWidth(visibleText));
         lineWidth = renderer.getTextWidth(fontId, visibleText, currentStyle, baseDir);
         if ((currentStyle & (EpdFontFamily::SUP | EpdFontFamily::SUB)) != 0) {
           lineWidth = (lineWidth + 1) / 2;
         }
+        lineWidth += trackingWidth(visibleText);
       }
 
       for (auto& line : decorationLines) {
@@ -356,6 +366,7 @@ bool TextBlock::serialize(HalFile& file) const {
   serialization::writePod(file, blockStyle.textIndentDefined);
   serialization::writePod(file, blockStyle.isRtl);
   serialization::writePod(file, blockStyle.directionDefined);
+  serialization::writePod(file, blockStyle.characterSpacing);
 
   return true;
 }
@@ -434,6 +445,7 @@ std::unique_ptr<TextBlock> TextBlock::deserialize(HalFile& file) {
   serialization::readPod(file, blockStyle.textIndentDefined);
   serialization::readPod(file, blockStyle.isRtl);
   serialization::readPod(file, blockStyle.directionDefined);
+  serialization::readPod(file, blockStyle.characterSpacing);
 
   return block;
 }

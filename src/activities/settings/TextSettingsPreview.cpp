@@ -52,8 +52,10 @@ void relayout(PreviewLayout& layout, const GfxRenderer& renderer, int fontId, in
     }
   }
 
-  parsed.layoutAndExtractLines(renderer, fontId, static_cast<uint16_t>(textWidth),
-                               [&layout](std::shared_ptr<TextBlock> line) { layout.lines.push_back(std::move(line)); });
+  parsed.layoutAndExtractLines(
+      renderer, fontId, static_cast<uint16_t>(textWidth),
+      [&layout](std::shared_ptr<TextBlock> line) { layout.lines.push_back(std::move(line)); }, true,
+      SETTINGS.getCharacterSpacing(), SETTINGS.wordSpacing);
 }
 
 }  // namespace
@@ -96,6 +98,8 @@ void renderPreview(const GfxRenderer& renderer, PreviewLayout& layout, int previ
                        .screenMargin = SETTINGS.screenMargin,
                        .textWidth = textWidth,
                        .lineCompression = compression,
+                       .characterSpacing = SETTINGS.getCharacterSpacing(),
+                       .wordSpacing = SETTINGS.wordSpacing,
                        .alignment = SETTINGS.paragraphAlignment,
                        .extraParagraphSpacing = SETTINGS.extraParagraphSpacing != 0,
                        .firstLineIndent = SETTINGS.firstLineIndent != 0,

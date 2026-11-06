@@ -1087,7 +1087,7 @@ void GfxRenderer::renderTextFallbackRotated90CW(const TextFallbackGlyph& fallbac
 }
 
 int GfxRenderer::measureTextAdvance(const int resolvedFontId, const EpdFontFamily& fontFamily, const char* text,
-                                    const EpdFontFamily::Style style) const {
+                                    const EpdFontFamily::Style style, const int8_t tracking) const {
   uint32_t cp;
   uint32_t prevCp = 0;
   bool prevWasEpd = false;
@@ -1118,7 +1118,8 @@ int GfxRenderer::measureTextAdvance(const int resolvedFontId, const EpdFontFamil
       }
 
       if (fastPrevCp != 0) {
-        fastWidthPx += snapTextAdvance(fastPrevAdvanceFP + fontFamily.getKerning(fastPrevCp, cp, style), isSupSub);
+        fastWidthPx += snapTextAdvance(fastPrevAdvanceFP + fontFamily.getKerning(fastPrevCp, cp, style), isSupSub) +
+                       TextSpacing::trackingBetween(fastPrevCp, cp, tracking);
       }
       fastPrevAdvanceFP = advanceFP;
       fastPrevCp = cp;
@@ -1141,7 +1142,8 @@ int GfxRenderer::measureTextAdvance(const int resolvedFontId, const EpdFontFamil
       if (!sdIt->second->getGlyphMetrics(cp, styleIdx, &metricGlyph, &metricsFile)) break;
       if (metricPrevCp != 0) {
         metricWidthPx +=
-            snapTextAdvance(metricPrevAdvanceFP + fontFamily.getKerning(metricPrevCp, cp, style), isSupSub);
+            snapTextAdvance(metricPrevAdvanceFP + fontFamily.getKerning(metricPrevCp, cp, style), isSupSub) +
+            TextSpacing::trackingBetween(metricPrevCp, cp, tracking);
       }
       metricPrevAdvanceFP = metricGlyph.advanceX;
       metricPrevCp = cp;
@@ -1162,7 +1164,7 @@ int GfxRenderer::measureTextAdvance(const int resolvedFontId, const EpdFontFamil
 
     if (prevCp != 0) {
       const int32_t kernFP = prevWasEpd && glyph ? fontFamily.getKerning(prevCp, cp, style) : 0;
-      widthPx += snapTextAdvance(prevAdvanceFP + kernFP, isSupSub);
+      widthPx += snapTextAdvance(prevAdvanceFP + kernFP, isSupSub) + TextSpacing::trackingBetween(prevCp, cp, tracking);
     }
 
     if (glyph) {
@@ -1282,13 +1284,14 @@ int GfxRenderer::getTextWidth(const int fontId, const char* text, const EpdFontF
 
 void GfxRenderer::drawCenteredText(const int fontId, const int y, const char* text, const bool black,
                                    const EpdFontFamily::Style style, const BidiUtils::BidiBaseDir baseDir) const {
-  const int x = (getScreenWidth() - getTextAdvanceX(fontId, text, style, baseDir)) / 2;
+  const int x = (getScreenWidth() - getTextAdvanceX(fontId, text, style, 0, baseDir)) / 2;
   drawText(fontId, x, y, text, black, style, baseDir);
 }
 
 bool GfxRenderer::drawText(const int fontId, const int x, const int y, const char* text, const bool black,
                            const EpdFontFamily::Style style, const BidiUtils::BidiBaseDir baseDir,
-                           bool (*isCancelled)(const void*), const void* cancellationContext) const {
+                           bool (*isCancelled)(const void*), const void* cancellationContext,
+                           const int8_t tracking) const {
   // cannot draw a NULL / empty string
   if (text == nullptr || *text == '\0') {
     return true;
@@ -1382,7 +1385,8 @@ bool GfxRenderer::drawText(const int fontId, const int x, const int y, const cha
     // built-in fallback boundary; the fallback advance is already authoritative.
     if (prevCp != 0) {
       const int32_t kernFP = prevWasEpd && glyph ? font.getKerning(prevCp, cp, style) : 0;
-      lastBaseX += snapTextAdvance(prevAdvanceFP + kernFP, isSupSub);
+      lastBaseX +=
+          snapTextAdvance(prevAdvanceFP + kernFP, isSupSub) + TextSpacing::trackingBetween(prevCp, cp, tracking);
     }
 
     const int fallbackWidth = hasFallback && fallback.metrics.width > 0 ? fallback.metrics.width : fallback.advance;
@@ -2867,24 +2871,25 @@ int GfxRenderer::getSpaceAdvance(const int fontId, const uint32_t leftCp, const 
 }
 
 int GfxRenderer::getKerning(const int fontId, const uint32_t leftCp, const uint32_t rightCp,
-                            const EpdFontFamily::Style style) const {
+                            const EpdFontFamily::Style style, const int8_t tracking) const {
+  const int trackingPx = TextSpacing::trackingBetween(leftCp, rightCp, tracking);
   const auto fontIt = fontMap.find(fontId);
-  if (fontIt == fontMap.end()) return 0;
+  if (fontIt == fontMap.end()) return trackingPx;
 
   const auto& font = fontIt->second;
-  if (!font.hasCodepoint(leftCp, style) || !font.hasCodepoint(rightCp, style)) return 0;
+  if (!font.hasCodepoint(leftCp, style) || !font.hasCodepoint(rightCp, style)) return trackingPx;
 
   const EpdGlyph* leftGlyph = font.getGlyph(leftCp, style);
-  if (!leftGlyph || !font.getGlyph(rightCp, style)) return 0;
+  if (!leftGlyph || !font.getGlyph(rightCp, style)) return trackingPx;
 
   const int32_t kernFP = font.getKerning(leftCp, rightCp, style);
   const bool isSupSub = isHalfScaleStyle(style);
   return snapTextAdvance(static_cast<int32_t>(leftGlyph->advanceX) + kernFP, isSupSub) -
-         snapTextAdvance(leftGlyph->advanceX, isSupSub);
+         snapTextAdvance(leftGlyph->advanceX, isSupSub) + trackingPx;
 }
 
 int GfxRenderer::getTextAdvanceX(const int fontId, const char* text, const EpdFontFamily::Style style,
-                                 const BidiUtils::BidiBaseDir baseDir) const {
+                                 const int8_t tracking, const BidiUtils::BidiBaseDir baseDir) const {
   if (text == nullptr || *text == '\0') return 0;
 
   const int resolvedFontId = resolveTextFontId(fontId, text, style);
@@ -2896,7 +2901,7 @@ int GfxRenderer::getTextAdvanceX(const int fontId, const char* text, const EpdFo
 
   std::string visual;
   const char* renderedText = resolveVisualText(text, visual, baseDir);
-  return measureTextAdvance(resolvedFontId, fontIt->second, renderedText, style);
+  return measureTextAdvance(resolvedFontId, fontIt->second, renderedText, style, tracking);
 }
 
 int GfxRenderer::getFontAscenderSize(const int fontId) const {

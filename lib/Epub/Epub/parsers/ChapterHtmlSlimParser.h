@@ -50,6 +50,8 @@ class ChapterHtmlSlimParser {
   bool hyphenationEnabled;
   bool firstLineIndent;
   bool focusReadingEnabled;
+  int8_t characterSpacing = 0;
+  uint8_t wordSpacingPercent = 100;
   const CssParser* cssParser;
   bool embeddedStyle;
   uint8_t imageRendering;
@@ -160,6 +162,11 @@ class ChapterHtmlSlimParser {
         tocAnchors(std::move(tocAnchors)) {}
 
   ~ChapterHtmlSlimParser();
+
+  void setTextSpacing(const int8_t characterSpacing, const uint8_t wordSpacingPercent) {
+    this->characterSpacing = characterSpacing;
+    this->wordSpacingPercent = wordSpacingPercent;
+  }
 
   // One-shot parse: builds every page before returning (begin + step* + finish).
   bool parseAndBuildPages();
